@@ -1,0 +1,1797 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Киберполигон: ЦОД банка «Альфа-Траст»</title>
+<style>
+:root{
+  --bg:#070b12;--bg2:#0b1220;--panel:rgba(14,21,34,.82);--panel2:rgba(20,29,45,.92);
+  --line:rgba(148,163,184,.14);--line2:rgba(148,163,184,.28);
+  --txt:#c9d6e5;--muted:#7c8da5;--head:#eaf2fb;
+  --cyan:#22d3ee;--green:#34d399;--amber:#fbbf24;--red:#f87171;--violet:#a78bfa;--blue:#60a5fa;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;color:var(--txt);font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:
+    radial-gradient(900px 520px at 12% -8%,rgba(34,211,238,.14),transparent 60%),
+    radial-gradient(800px 520px at 92% 4%,rgba(167,139,250,.13),transparent 62%),
+    radial-gradient(700px 600px at 50% 110%,rgba(52,211,153,.07),transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.35;
+  background-image:linear-gradient(rgba(148,163,184,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.06) 1px,transparent 1px);
+  background-size:44px 44px;
+  mask-image:radial-gradient(circle at 50% 20%,#000 20%,transparent 78%);
+  -webkit-mask-image:radial-gradient(circle at 50% 20%,#000 20%,transparent 78%);
+}
+.wrap{max-width:1260px;margin:auto;padding:20px;position:relative;z-index:1}
+
+/* ---------- HERO ---------- */
+.hero{
+  position:relative;overflow:hidden;padding:26px 26px 22px;border-radius:20px;
+  background:linear-gradient(135deg,rgba(17,26,43,.95),rgba(9,16,29,.95));
+  border:1px solid rgba(34,211,238,.22);
+  box-shadow:0 24px 60px -20px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.05);
+}
+.hero::after{
+  content:"";position:absolute;inset:-40% -10% auto;height:180px;
+  background:radial-gradient(60% 100% at 50% 0%,rgba(34,211,238,.28),transparent 70%);
+  pointer-events:none;
+}
+.hero-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start;position:relative}
+.tag{
+  display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--cyan);border:1px solid rgba(34,211,238,.35);
+  background:rgba(34,211,238,.08);padding:5px 11px;border-radius:99px;
+}
+.tag .dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+.hero h1{margin:12px 0 6px;font-size:clamp(24px,3.4vw,38px);line-height:1.12;letter-spacing:-.03em;color:#fff}
+.hero h1 span{
+  background:linear-gradient(92deg,#67e8f9,#a78bfa 55%,#34d399);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero p{margin:0;color:#93a4bb;max-width:760px;font-size:14px}
+
+/* HUD */
+.hud{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.kpi{
+  min-width:120px;flex:1;padding:10px 13px;border-radius:12px;background:rgba(10,17,29,.75);
+  border:1px solid var(--line);position:relative;overflow:hidden;
+}
+.kpi label{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.kpi b{font-size:19px;font-family:var(--mono);color:var(--head);letter-spacing:-.02em}
+.kpi.good b{color:var(--green)}.kpi.warn b{color:var(--amber)}.kpi.bad b{color:var(--red)}
+
+.ids{display:grid;grid-template-columns:1.2fr 1.2fr .8fr auto;gap:10px;margin-top:16px;align-items:end}
+.ids .field{margin:0}
+.ids label{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:5px;display:block}
+input,textarea,select{
+  width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--line);
+  background:rgba(7,12,20,.85);color:var(--txt);font:inherit;transition:border-color .18s,box-shadow .18s,background .18s;
+}
+input:focus,textarea:focus,select:focus{outline:none;border-color:rgba(34,211,238,.55);box-shadow:0 0 0 3px rgba(34,211,238,.12)}
+input::placeholder,textarea::placeholder{color:#4d5b70}
+textarea{resize:vertical;min-height:78px;line-height:1.5}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,#5b6b82 50%),linear-gradient(135deg,#5b6b82 50%,transparent 50%);background-position:calc(100% - 16px) 17px,calc(100% - 11px) 17px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+
+/* ---------- LAYOUT ---------- */
+.layout{display:grid;grid-template-columns:250px 1fr;gap:16px;margin-top:16px;align-items:start}
+.panel,.main{
+  background:var(--panel);border:1px solid var(--line);border-radius:18px;
+  box-shadow:0 20px 50px -28px rgba(0,0,0,.9);backdrop-filter:blur(10px);
+}
+.nav{padding:12px;position:sticky;top:14px}
+.nav-title{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#54637a;font-weight:800;padding:4px 10px 8px}
+.nav button{
+  width:100%;display:flex;align-items:center;gap:10px;border:1px solid transparent;background:none;
+  text-align:left;padding:9px 10px;border-radius:10px;font-weight:700;color:#8595ab;cursor:pointer;
+  margin-bottom:3px;transition:.18s;font-size:13px;font-family:inherit;position:relative;
+}
+.nav button:hover{background:rgba(148,163,184,.07);color:#c9d6e5}
+.nav button.active{background:rgba(34,211,238,.1);color:#67e8f9;border-color:rgba(34,211,238,.28)}
+.nav button.active .num{background:rgba(34,211,238,.2);color:#a5f3fc}
+.nav .num{
+  width:22px;height:22px;flex:none;display:grid;place-items:center;border-radius:7px;
+  background:rgba(148,163,184,.1);color:#8595ab;font-size:11px;font-family:var(--mono);font-weight:700;
+}
+.nav small{display:block;color:#54637a;font-weight:500;font-size:10.5px;margin-top:1px;letter-spacing:.01em}
+.nav .txt{min-width:0}
+.nav button.done .num{background:rgba(52,211,153,.16);color:#6ee7b7}
+.nav button.done .num::after{content:"✓";font-size:11px}
+.nav button.done .num span{display:none}
+
+.progress-wrap{padding:10px 6px 4px}
+.progress{height:7px;border-radius:99px;background:rgba(148,163,184,.13);overflow:hidden}
+.progress i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#22d3ee,#34d399);transition:width .5s cubic-bezier(.3,.9,.3,1);box-shadow:0 0 12px rgba(34,211,238,.6)}
+.progress-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-bottom:6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+
+.main{padding:20px 22px 24px;min-height:640px}
+
+/* ---------- PHASE ---------- */
+.phase{display:none;animation:fade .32s ease}
+.phase.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:16px}
+.head .eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);font-weight:800;margin-bottom:4px}
+.head h2{margin:0;font-size:21px;color:var(--head);letter-spacing:-.02em;line-height:1.25}
+.head p{margin:5px 0 0;color:var(--muted);font-size:13px;max-width:640px}
+.chip{
+  white-space:nowrap;background:rgba(148,163,184,.09);border:1px solid var(--line);border-radius:99px;
+  padding:5px 11px;font-size:11.5px;color:#a9b8cc;font-weight:700;font-family:var(--mono);
+}
+.brief,.plot{padding:13px 16px;border-radius:12px;margin:12px 0;font-size:13.2px;line-height:1.55}
+.brief{background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.22);color:#a9dcea}
+.plot{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.25);border-left:3px solid var(--amber);color:#e8c98a}
+.brief b,.plot b{color:#fff}
+.hint-box{
+  background:rgba(167,139,250,.08);border:1px dashed rgba(167,139,250,.42);padding:12px 14px;
+  border-radius:11px;margin:12px 0;font-size:12.8px;color:#cbb6ff;display:none;line-height:1.55;
+}
+.hint-box.show{display:block;animation:fade .3s}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{margin:11px 0}
+.field > label{display:block;font-weight:800;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#8595ab;margin-bottom:6px}
+
+/* buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;background:rgba(148,163,184,.09);border:1px solid var(--line2);
+  border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:750;font-size:12.5px;color:#c3d0e0;
+  transition:.16s;font-family:inherit;
+}
+.btn:hover{background:rgba(148,163,184,.16);transform:translateY(-1px);color:#fff}
+.btn:active{transform:translateY(0)}
+.btn.primary{
+  background:linear-gradient(135deg,#0ea5b7,#22d3ee);border-color:transparent;color:#04121a;font-weight:800;
+  box-shadow:0 8px 24px -10px rgba(34,211,238,.8);
+}
+.btn.primary:hover{box-shadow:0 12px 30px -10px rgba(34,211,238,1);color:#04121a}
+.btn.green{background:linear-gradient(135deg,#059669,#34d399);border-color:transparent;color:#03140d;font-weight:800;box-shadow:0 8px 24px -10px rgba(52,211,153,.75)}
+.btn.violet{background:rgba(167,139,250,.14);border-color:rgba(167,139,250,.4);color:#c9b8ff}
+.btn.ghost{background:transparent}
+.btn.danger{color:#fca5a5;border-color:rgba(248,113,113,.3)}
+.btn.danger:hover{background:rgba(248,113,113,.12)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.row{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0;align-items:center}
+.spacer{flex:1}
+
+/* procurement */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pick{
+  border:1px solid var(--line);border-radius:13px;padding:13px;cursor:pointer;background:rgba(7,12,20,.6);
+  transition:.18s;position:relative;overflow:hidden;
+}
+.pick::before{content:"";position:absolute;inset:0 0 auto;height:2px;background:var(--tier,#334155);opacity:.9}
+.pick:hover{border-color:rgba(148,163,184,.4);transform:translateY(-2px);background:rgba(148,163,184,.05)}
+.pick.sel{border-color:rgba(34,211,238,.65);background:rgba(34,211,238,.08);box-shadow:0 0 0 1px rgba(34,211,238,.25),0 12px 30px -18px rgba(34,211,238,.9)}
+.pick.sel::after{content:"✓";position:absolute;top:9px;right:11px;color:#67e8f9;font-weight:900;font-size:13px}
+.pick b{display:block;font-size:13px;color:#eaf2fb;letter-spacing:-.01em;padding-right:16px}
+.pick small{display:block;color:var(--muted);font-size:11.5px;margin-top:5px;line-height:1.45}
+.price{font-family:var(--mono);color:#6ee7b7;font-weight:800;font-size:13px;margin-top:8px;display:block}
+.tierbar{height:4px;border-radius:99px;background:rgba(148,163,184,.14);margin-top:9px;overflow:hidden}
+.tierbar i{display:block;height:100%;border-radius:99px;background:var(--tier)}
+
+.budgetbar{height:10px;border-radius:99px;background:rgba(148,163,184,.13);overflow:hidden;margin-top:8px}
+.budgetbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#22d3ee,#34d399);transition:width .45s}
+.budgetbar.over i{background:linear-gradient(90deg,#f59e0b,#f87171)}
+
+/* canvas */
+.toolbox{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;padding:10px;background:rgba(7,12,20,.65);border:1px solid var(--line);border-radius:12px;align-items:center}
+.palette{display:flex;gap:6px;flex-wrap:wrap}
+.tool{
+  display:inline-flex;align-items:center;gap:6px;background:rgba(148,163,184,.08);border:1px solid var(--line);
+  padding:6px 10px;border-radius:8px;cursor:pointer;font-size:11.8px;color:#cfdceb;user-select:none;
+  transition:.15s;font-family:inherit;
+}
+.tool:hover{border-color:rgba(34,211,238,.5);background:rgba(34,211,238,.1);transform:translateY(-1px)}
+.canvas{
+  height:460px;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;
+  background:radial-gradient(circle at 30% 20%,rgba(34,211,238,.05),transparent 55%),#060a11;
+  background-image:radial-gradient(rgba(148,163,184,.18) 1px,transparent 1px);
+  background-size:26px 26px;background-position:0 0;
+  touch-action:none;
+}
+.canvas.dropping{box-shadow:inset 0 0 0 2px rgba(34,211,238,.45)}
+#wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.empty-hint{
+  position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#4a5870;
+  font-size:13px;pointer-events:none;padding:30px;
+}
+.empty-hint b{display:block;color:#6d7e97;font-size:14px;margin-bottom:4px}
+.node{
+  position:absolute;width:120px;height:72px;border:1px solid var(--line2);border-radius:11px;
+  background:linear-gradient(160deg,#131e30,#0c1524);box-shadow:0 10px 24px -12px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,255,255,.05);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  cursor:grab;touch-action:none;user-select:none;transition:box-shadow .18s,border-color .18s,transform .18s;
+  border-left:2px solid var(--accent,#22d3ee);
+}
+.node:hover{box-shadow:0 14px 30px -12px rgba(0,0,0,1),0 0 0 1px rgba(34,211,238,.25)}
+.node.sel{box-shadow:0 0 0 2px rgba(34,211,238,.7),0 14px 30px -12px rgba(0,0,0,1)}
+.node.dragging{cursor:grabbing;transform:scale(1.03);z-index:20}
+.node i{font-style:normal;font-size:17px;line-height:1}
+.node b{font-size:11px;color:#eaf2fb;font-weight:800;max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.node small{font-size:9.5px;color:#7c8da5;font-family:var(--mono);max-width:108px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.node .kill{
+  position:absolute;top:-7px;right:-7px;width:19px;height:19px;border-radius:50%;border:1px solid rgba(248,113,113,.5);
+  background:#2a1116;color:#fca5a5;font-size:11px;line-height:1;cursor:pointer;display:none;place-items:center;padding:0;
+}
+.node:hover .kill{display:grid}
+.node .kill:hover{background:#7f1d1d;color:#fff}
+
+@keyframes dash{to{stroke-dashoffset:-24}}
+.wire-glow{stroke:rgba(34,211,238,.22);stroke-width:7;stroke-linecap:round;fill:none}
+.wire{stroke:#3b82f6;stroke-width:2.5;stroke-linecap:round;fill:none}
+.wire.fiber{stroke:#34d399}
+.wire.dim{opacity:.28}
+.wire.hot{stroke:#67e8f9;stroke-width:3.4;filter:drop-shadow(0 0 6px rgba(34,211,238,.9))}
+#tempLine{stroke:#67e8f9;stroke-width:2;stroke-dasharray:7 6;animation:dash .9s linear infinite;fill:none}
+
+.packet{
+  position:absolute;width:11px;height:11px;border-radius:50%;background:#a5f3fc;pointer-events:none;
+  box-shadow:0 0 14px 3px rgba(34,211,238,.9);transition:left .5s linear,top .5s linear;z-index:30;
+}
+
+.ctxmenu{
+  position:fixed;z-index:999;background:#111b2b;border:1px solid var(--line2);border-radius:10px;
+  padding:5px;box-shadow:0 20px 45px -10px #000;display:none;min-width:168px;
+}
+.ctxmenu.show{display:block;animation:fade .12s}
+.ctxmenu button{
+  display:block;width:100%;text-align:left;background:none;border:0;color:#c3d0e0;padding:8px 10px;
+  border-radius:7px;font:inherit;font-size:12.5px;cursor:pointer;
+}
+.ctxmenu button:hover{background:rgba(34,211,238,.12);color:#a5f3fc}
+
+/* tables */
+.tbl{overflow:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:12.3px}
+th,td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:middle}
+th{background:rgba(148,163,184,.07);color:#a9b8cc;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;position:sticky;top:0;backdrop-filter:blur(6px);z-index:2}
+tbody tr:last-child td{border-bottom:0}
+td input,td select{padding:6px 8px;font-size:12px;border-radius:7px}
+td.mono{font-family:var(--mono);font-size:11.5px;color:#8ea3bd}
+
+.log-tbl tbody tr{cursor:pointer;transition:background .15s}
+.log-tbl tbody tr:hover{background:rgba(148,163,184,.06)}
+.log-tbl tbody tr.sel{background:rgba(34,211,238,.1);box-shadow:inset 3px 0 0 #22d3ee}
+.log-tbl tbody tr.mal{background:rgba(248,113,113,.09)}
+.log-tbl tbody tr.mal td:nth-child(2){color:#fca5a5;font-weight:800}
+.proto{display:inline-block;padding:2px 7px;border-radius:6px;font-family:var(--mono);font-size:10.5px;background:rgba(148,163,184,.14);color:#b9c8da}
+.proto.tcp{background:rgba(96,165,250,.16);color:#93c5fd}
+.proto.tls{background:rgba(167,139,250,.16);color:#c4b5fd}
+.proto.http{background:rgba(52,211,153,.16);color:#6ee7b7}
+.proto.dns{background:rgba(251,191,36,.16);color:#fcd34d}
+
+.packet-detail{
+  margin-top:12px;border:1px solid var(--line);border-radius:12px;background:rgba(7,12,20,.7);
+  padding:14px 16px;font-family:var(--mono);font-size:12px;line-height:1.7;display:none;
+}
+.packet-detail.show{display:block;animation:fade .2s}
+.packet-detail .k{color:#7c8da5}
+.packet-detail .v{color:#a5f3fc}
+.packet-detail .warn{color:#fcd34d}
+.packet-detail .bad{color:#fca5a5;font-weight:800}
+.packet-detail h4{margin:0 0 8px;font-family:system-ui;font-size:13px;color:#eaf2fb;letter-spacing:.02em}
+
+/* terminal */
+.term{
+  background:#04070c;border:1px solid rgba(52,211,153,.22);border-radius:12px;padding:12px 14px;
+  font-family:var(--mono);font-size:12.2px;line-height:1.65;height:210px;overflow:auto;color:#86efac;
+  box-shadow:inset 0 0 40px rgba(52,211,153,.05);
+}
+.term .cmd{color:#67e8f9}
+.term .err{color:#fca5a5}
+.term .ok{color:#6ee7b7}
+.term .dim{color:#5b6b82}
+.term-input{display:flex;gap:8px;align-items:center;margin-top:9px}
+.term-input span{font-family:var(--mono);color:#34d399;font-size:13px}
+.term-input input{font-family:var(--mono);font-size:12.5px;background:#04070c;border-color:rgba(52,211,153,.25)}
+
+/* result banner */
+.result{
+  margin-top:12px;padding:12px 15px;border-radius:11px;font-weight:700;font-size:13px;display:none;
+  align-items:center;gap:9px;line-height:1.5;
+}
+.result.show{display:flex;animation:fade .25s}
+.result.ok{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.35);color:#6ee7b7}
+.result.err{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.35);color:#fca5a5}
+.result.warn{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);color:#fcd34d}
+
+.hops{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.hop{
+  font-family:var(--mono);font-size:11px;padding:4px 9px;border-radius:7px;background:rgba(148,163,184,.1);
+  border:1px solid var(--line);color:#a9b8cc;
+}
+.hop.bad{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.35);color:#fca5a5}
+.hop.ok{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.3);color:#6ee7b7}
+
+/* badges */
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.badge{
+  display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:99px;font-size:12px;
+  font-weight:750;background:rgba(148,163,184,.08);border:1px solid var(--line);color:#5b6b82;
+  transition:.2s;
+}
+.badge.on{background:linear-gradient(135deg,rgba(251,191,36,.18),rgba(34,211,238,.14));border-color:rgba(251,191,36,.45);color:#fde68a;box-shadow:0 6px 20px -10px rgba(251,191,36,.7)}
+
+.toast{
+  position:fixed;bottom:22px;left:50%;transform:translate(-50%,18px);opacity:0;pointer-events:none;
+  background:#0f1a2a;color:#eaf2fb;border:1px solid rgba(34,211,238,.4);padding:11px 17px;border-radius:11px;
+  transition:.24s cubic-bezier(.3,.9,.3,1);box-shadow:0 20px 45px -12px #000;z-index:1200;font-size:13px;font-weight:650;
+  display:flex;align-items:center;gap:9px;
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.ok{border-color:rgba(52,211,153,.55)}
+.toast.err{border-color:rgba(248,113,113,.55)}
+
+.mono{font-family:var(--mono)}
+.small{font-size:12px;color:var(--muted)}
+.hr{height:1px;background:var(--line);margin:16px 0;border:0}
+.sec-title{font-size:13px;font-weight:800;color:#eaf2fb;letter-spacing:.01em;margin:18px 0 9px;display:flex;align-items:center;gap:8px}
+.sec-title .n{width:19px;height:19px;border-radius:6px;background:rgba(34,211,238,.15);color:#67e8f9;display:grid;place-items:center;font-size:11px;font-family:var(--mono)}
+
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .nav{position:static;display:flex;gap:6px;overflow-x:auto;padding:10px}
+  .nav-title,.progress-wrap{display:none}
+  .nav button{min-width:148px;margin:0}
+  .ids{grid-template-columns:1fr 1fr}
+  .cards{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .hud .kpi{min-width:calc(50% - 5px)}
+  .main{padding:16px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="hero-top">
+    <div>
+      <span class="tag"><span class="dot"></span>Практикум-квест · 80 минут · Модуль «Кибербезопасность ЦОД»</span>
+      <h1>Киберполигон: <span>ЦОД банка «Альфа-Траст»</span></h1>
+      <p>Спроектируйте защищённый контур с нуля, скоммутируйте сегменты, настройте IP-план, прогоните пакеты по топологии, отразите ночную атаку и защитите решение перед Советом директоров.</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost" onclick="saveState(true)" title="Сохранить прогресс в браузере">💾 Сохранить</button>
+      <button class="btn ghost danger" onclick="hardReset()" title="Сбросить всё">↺ Сброс</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="kpi" id="kpi_time"><label>⏱ До дедлайна</label><b>80:00</b></div>
+    <div class="kpi good" id="kpi_score"><label>★ Рейтинг</label><b>1000</b></div>
+    <div class="kpi" id="kpi_budget"><label>₽ Бюджет</label><b>1 500 000</b></div>
+    <div class="kpi" id="kpi_nodes"><label>▣ Узлов / связей</label><b>0 / 0</b></div>
+    <div class="kpi warn" id="kpi_step"><label>Этап</label><b style="font-size:14px">1 / 6</b></div>
+  </div>
+
+  <div class="ids">
+    <div class="field"><label>Инженер 1 · Архитектор</label><input id="p1" placeholder="Имя и фамилия"></div>
+    <div class="field"><label>Инженер 2 · Аудитор ИБ</label><input id="p2" placeholder="Имя и фамилия"></div>
+    <div class="field"><label>Группа</label><input id="gr" placeholder="Например, ИС-21"></div>
+    <div class="field" style="min-width:150px">
+      <label>Таймер</label>
+      <button class="btn" id="timerBtn" style="width:100%;justify-content:center" onclick="toggleTimer()">▶ Старт</button>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <nav class="nav panel" id="nav">
+    <div class="nav-title">Маршрут миссии</div>
+    <button class="active" data-i="0" onclick="go(0)"><span class="num"><span>1</span></span><span class="txt">Тревога SOC<small>Брифинг и гипотеза</small></span></button>
+    <button data-i="1" onclick="go(1)"><span class="num"><span>2</span></span><span class="txt">Закупка железа<small>Бюджет и риски</small></span></button>
+    <button data-i="2" onclick="go(2)"><span class="num"><span>3</span></span><span class="txt">Сборка топологии<small>Конструктор схемы</small></span></button>
+    <button data-i="3" onclick="go(3)"><span class="num"><span>4</span></span><span class="txt">IP-план и Ping<small>Связность сети</small></span></button>
+    <button data-i="4" onclick="go(4)"><span class="num"><span>5</span></span><span class="txt">Дамп трафика<small>Wireshark + терминал</small></span></button>
+    <button data-i="5" onclick="go(5)"><span class="num"><span>6</span></span><span class="txt">Защита проекта<small>Отчёт и баллы</small></span></button>
+    <div class="progress-wrap">
+      <div class="progress-lbl"><span>Готовность</span><span id="progPct">0%</span></div>
+      <div class="progress"><i id="progBar"></i></div>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ============ 1 ============ -->
+    <section class="phase active" id="ph0">
+      <div class="head">
+        <div>
+          <div class="eyebrow">Фаза 1 · Брифинг</div>
+          <h2>03:42 — ночной инцидент</h2>
+          <p>Сначала распределите роли в паре и зафиксируйте первую гипотезу. Она попадёт в итоговый отчёт.</p>
+        </div>
+        <span class="chip">10 мин</span>
+      </div>
+
+      <div class="plot">
+        <b>⚡ Срочное сообщение от SOC.</b> В 03:42 по МСК система мониторинга зафиксировала аномальный трафик к шлюзу обработки транзакций. Сегмент с базами данных автоматически выведен из балансировки. Директор департамента ИТ требует восстановить контур и объяснить, как злоумышленник оказался внутри.
+      </div>
+
+      <div class="brief">
+        <b>Как работает практикум:</b> архитектор проектирует топологию и подбирает оборудование, аудитор ИБ отвечает за IP-план, правила фильтрации и разбор трафика. Затем пара меняется ролями на этапе расследования. Все действия влияют на итоговый рейтинг.
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label>Гипотеза: что произошло?</label>
+          <textarea id="f_hyp" placeholder="Например: компрометация сервисной учётной записи через внешний TLS-шлюз с последующим выходом на СУБД…"></textarea>
+        </div>
+        <div class="field">
+          <label>План первых 30 минут</label>
+          <textarea id="f_plan" placeholder="1. Изолировать сегмент БД&#10;2. Снять дамп трафика&#10;3. Проверить правила ACL на NGFW"></textarea>
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn violet" onclick="showHint(0)">💡 Подсказка наставника</button>
+        <button class="btn ghost" onclick="restoreSample()">🧩 Загрузить пример топологии (для ориентира)</button>
+        <span class="spacer"></span>
+        <button class="btn primary" onclick="go(1)">К закупке оборудования →</button>
+      </div>
+      <div class="hint-box" id="hint0"></div>
+    </section>
+
+    <!-- ============ 2 ============ -->
+    <section class="phase" id="ph1">
+      <div class="head">
+        <div>
+          <div class="eyebrow">Фаза 2 · Закупка</div>
+          <h2>Собрать контур в рамках 1,5 млн ₽</h2>
+          <p>Дешёвое железо экономит бюджет, но не держит пиковую нагрузку. Дорогое — оставляет без резерва. Ищите баланс.</p>
+        </div>
+        <span class="chip">15 мин</span>
+      </div>
+
+      <div class="budgetbar" id="bbWrap"><i id="bbFill"></i></div>
+      <div class="row" style="justify-content:space-between;margin-top:8px">
+        <span class="small" id="spendLabel">Закупка: 0 ₽ · остаток 1 500 000 ₽</span>
+        <span class="small" id="riskLabel"></span>
+      </div>
+
+      <div class="sec-title"><span class="n">1</span> Межсетевой экран (NGFW)</div>
+      <div class="cards" id="cat_fw"></div>
+
+      <div class="sec-title"><span class="n">2</span> Ядро коммутации</div>
+      <div class="cards" id="cat_sw"></div>
+
+      <div class="sec-title"><span class="n">3</span> Сервер СУБД</div>
+      <div class="cards" id="cat_db"></div>
+
+      <div class="sec-title"><span class="n">4</span> Дополнительные модули</div>
+      <div class="cards" id="cat_extra"></div>
+
+      <div class="row" style="margin-top:18px">
+        <button class="btn violet" onclick="showHint(1)">💡 Подсказка наставника</button>
+        <span class="spacer"></span>
+        <button class="btn primary" onclick="go(2)">К конструктору топологии →</button>
+      </div>
+      <div class="hint-box" id="hint1"></div>
+    </section>
+
+    <!-- ============ 3 ============ -->
+    <section class="phase" id="ph2">
+      <div class="head">
+        <div>
+          <div class="eyebrow">Фаза 3 · Топология</div>
+          <h2>Соберите схему ЦОД вручную</h2>
+          <p>Добавьте оборудование из палитры, расставьте блоки, соедините сегменты магистралями. Схема уйдёт в отчёт.</p>
+        </div>
+        <span class="chip">20 мин</span>
+      </div>
+
+      <div class="toolbox">
+        <div class="palette" id="palette"></div>
+        <span class="spacer"></span>
+        <button class="btn" id="connBtn" onclick="toggleConnect()">🔗 Провод</button>
+        <button class="btn ghost" id="wireTypeBtn" onclick="toggleWireType()" title="Переключить тип магистрали">Кабель: медь</button>
+        <button class="btn ghost danger" onclick="clearSchema()">🗑 Очистить</button>
+      </div>
+
+      <div class="canvas" id="can">
+        <svg id="wires">
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <g id="wireLayer"></g>
+          <path id="tempLine" style="display:none"></path>
+        </svg>
+        <div class="empty-hint" id="emptyHint">
+          <div>
+            <b>Холст пуст</b>
+            Нажмите на оборудование в палитре выше — или перетащите его сюда.<br>
+            Затем включите «Провод» и соедините узлы.
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <button class="btn violet" onclick="showHint(2)">💡 Подсказка наставника</button>
+        <button class="btn ghost" onclick="exportSVG()">⬇ Экспорт схемы (.svg)</button>
+        <span class="spacer"></span>
+        <button class="btn primary" onclick="buildIPTable(); go(3)">К IP-плану и Ping →</button>
+      </div>
+      <div class="hint-box" id="hint2"></div>
+    </section>
+
+    <!-- ============ 4 ============ -->
+    <section class="phase" id="ph3">
+      <div class="head">
+        <div>
+          <div class="eyebrow">Фаза 4 · Адресация</div>
+          <h2>IP-план, VLAN и проверка связности</h2>
+          <p>Заполните параметры каждого узла и запустите эмуляцию пакета по собранной топологии.</p>
+        </div>
+        <span class="chip">15 мин</span>
+      </div>
+
+      <div class="brief">Совет: сервисные сегменты (СУБД, SIEM) держите в отдельных VLAN, а на периметре оставляйте политику <b>Strict Drop</b>. Ошибка в октете или маске — пинг не пройдёт.</div>
+
+      <div class="tbl" id="ipTable"></div>
+
+      <div class="row" style="margin-top:14px">
+        <button class="btn green" onclick="runPing()">🧪 Запустить эмуляцию пакета (Ping → СУБД)</button>
+        <button class="btn ghost" onclick="autoFillIPs()">⚙ Автозаполнение по шаблону</button>
+        <button class="btn violet" onclick="showHint(3)">💡 Подсказка</button>
+        <span class="spacer"></span>
+        <button class="btn primary" onclick="go(4)">К дампу трафика →</button>
+      </div>
+
+      <div class="result" id="pingResult"></div>
+      <div class="hops" id="pingHops"></div>
+      <div class="hint-box" id="hint3"></div>
+    </section>
+
+    <!-- ============ 5 ============ -->
+    <section class="phase" id="ph4">
+      <div class="head">
+        <div>
+          <div class="eyebrow">Фаза 5 · Форензика</div>
+          <h2>Дамп трафика и консоль дежурного</h2>
+          <p>Изучите перехваченные пакеты, отметьте вредоносные и заблокируйте источник через терминал.</p>
+        </div>
+        <span class="chip">15 мин</span>
+      </div>
+
+      <div class="brief">
+        Нажмите на строку — раскроется разбор пакета. Кнопка «Пометить вредоносным» в карточке пакета фиксирует вывод. Фильтр помогает искать по адресу или протоколу.
+      </div>
+
+      <div class="row" style="margin-bottom:8px">
+        <input id="dumpFilter" placeholder="Фильтр: 185.220, SQL, TLS…" oninput="renderDump()" style="max-width:320px">
+        <span class="small" id="dumpCount"></span>
+        <span class="spacer"></span>
+        <button class="btn ghost" onclick="window.open('about:blank')" style="display:none">.</button>
+        <button class="btn violet" onclick="showHint(4)">💡 Подсказка</button>
+      </div>
+
+      <div class="tbl">
+        <table class="log-tbl">
+          <thead><tr><th style="width:88px">Время</th><th style="width:76px">Протокол</th><th>Источник</th><th>Назначение</th><th>Информация</th></tr></thead>
+          <tbody id="dumpBody"></tbody>
+        </table>
+      </div>
+
+      <div class="packet-detail" id="pktDetail"></div>
+
+      <div class="sec-title" style="margin-top:20px"><span class="n">⌘</span> Консоль дежурного инженера</div>
+      <div class="term" id="term"></div>
+      <div class="term-input">
+        <span>admin@soc:~$</span>
+        <input id="termIn" placeholder="help — список команд" autocomplete="off">
+        <button class="btn" onclick="runCmd()">Выполнить</button>
+      </div>
+      <div class="small" style="margin-top:8px">Команды: <span class="mono">help · nmap · netstat · whois · block &lt;ip&gt; · isolate &lt;node&gt; · clear</span></div>
+
+      <div class="grid2" style="margin-top:16px">
+        <div class="field">
+          <label>IP злоумышленника</label>
+          <input id="f_atk" placeholder="xxx.xxx.xxx.xxx">
+        </div>
+        <div class="field">
+          <label>Что сделано для локализации</label>
+          <textarea id="f_fix" placeholder="1. Заблокирован внешний адрес на NGFW&#10;2. Закрыта SQL-инъекция&#10;3. Отозваны сессии service_admin"></textarea>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="spacer"></span>
+        <button class="btn primary" onclick="go(5)">К защите проекта →</button>
+      </div>
+      <div class="hint-box" id="hint4"></div>
+    </section>
+
+    <!-- ============ 6 ============ -->
+    <section class="phase" id="ph5">
+      <div class="head">
+        <div>
+          <div class="eyebrow">Фаза 6 · Защита</div>
+          <h2>Отчёт для Совета директоров</h2>
+          <p>Сформулируйте выводы на языке бизнеса: риск, деньги, сроки. Отчёт выгружается с топологией и метриками.</p>
+        </div>
+        <span class="chip">10 мин</span>
+      </div>
+
+      <div class="hud" style="margin:0 0 14px">
+        <div class="kpi"><label>Закупка</label><b id="sumSpend">0 ₽</b></div>
+        <div class="kpi"><label>Связность</label><b id="sumPing" style="font-size:14px">не проверена</b></div>
+        <div class="kpi"><label>Источник атаки</label><b id="sumAtk" style="font-size:13px">—</b></div>
+        <div class="kpi good"><label>Рейтинг</label><b id="sumScore">1000</b></div>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label>Резюме для Совета директоров</label>
+          <textarea id="f_res" placeholder="Атака отражена за 19 минут. Целостность данных подтверждена, простой сервиса — 0…"></textarea>
+        </div>
+        <div class="field">
+          <label>Рекомендации на следующий квартал</label>
+          <textarea id="f_rec" placeholder="Внедрить MFA для администраторов, сегментировать АБС, перейти на NGFW с IPS…"></textarea>
+        </div>
+      </div>
+
+      <div class="sec-title"><span class="n">★</span> Достижения</div>
+      <div class="badges" id="badges"></div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary" onclick="genReport()">📥 Скачать отчёт (HTML)</button>
+        <button class="btn ghost" onclick="previewReport()">👁 Предпросмотр</button>
+        <button class="btn violet" onclick="showHint(5)">💡 Подсказка</button>
+        <span class="spacer"></span>
+        <button class="btn ghost" onclick="go(0)">← В начало</button>
+      </div>
+      <div class="hint-box" id="hint5"></div>
+    </section>
+
+  </main>
+</div>
+</div>
+
+<div class="ctxmenu" id="ctx"></div>
+<div class="toast" id="toast"><span id="toastIcon">●</span><span id="toastTxt"></span></div>
+
+<script>
+/* =========================================================
+   КИБЕРПОЛИГОН · ядро приложения
+   ========================================================= */
+var BUDGET = 1500000;
+var TOTAL_TIME = 80 * 60;
+
+var NODE_TYPES = {
+  inet:{name:'Интернет', icon:'🌐', accent:'#22d3ee'},
+  fw:  {name:'Firewall', icon:'🛡️', accent:'#f87171'},
+  sw:  {name:'Core Switch', icon:'🔀', accent:'#a78bfa'},
+  web: {name:'Web Server', icon:'🖥️', accent:'#34d399'},
+  db:  {name:'DB Server', icon:'🗄️', accent:'#fbbf24'},
+  siem:{name:'SIEM / SOC', icon:'📊', accent:'#60a5fa'},
+  pc:  {name:'Рабочее место', icon:'💻', accent:'#94a3b8'},
+  ups: {name:'ИБП', icon:'🔋', accent:'#facc15'}
+};
+
+var CATALOG = {
+  fw:[
+    {id:'fw0', name:'FortiGate 100F', price:120000, tier:35, desc:'1 Gbps, базовый IPS. Тянет офис, но не пиковую атаку.', tierColor:'#f87171'},
+    {id:'fw1', name:'Check Point 3200', price:280000, tier:70, desc:'Глубокий разбор трафика, антивирус на шлюзе.', tierColor:'#fbbf24'},
+    {id:'fw2', name:'Palo Alto PA-850', price:450000, tier:95, desc:'App-ID, защита от zero-day, порты 10G.', tierColor:'#34d399'}
+  ],
+  sw:[
+    {id:'sw0', name:'Cisco Catalyst 2960X', price:90000, tier:35, desc:'24 порта 1G, только L2. Без VLAN-маршрутизации.', tierColor:'#f87171'},
+    {id:'sw1', name:'Huawei S5735-L', price:210000, tier:72, desc:'48 портов 1G + SFP+, L3, статическая маршрутизация.', tierColor:'#fbbf24'},
+    {id:'sw2', name:'Eltex MES5324', price:350000, tier:92, desc:'24 порта 10G, отечественное ПО, стекирование.', tierColor:'#34d399'}
+  ],
+  db:[
+    {id:'db0', name:'HPE DL360 Gen10', price:300000, tier:40, desc:'8 ядер, 64 ГБ RAM, SSD 1 ТБ. Без резерва питания.', tierColor:'#f87171'},
+    {id:'db1', name:'Dell PowerEdge R750', price:550000, tier:78, desc:'2 CPU, 256 ГБ RAM, NVMe RAID, резервные БП.', tierColor:'#fbbf24'},
+    {id:'db2', name:'Yadro Vegman R220', price:780000, tier:95, desc:'512 ГБ RAM, реестр Минпромторга, горячая замена.', tierColor:'#34d399'}
+  ],
+  extra:[
+    {id:'ids', name:'Лицензия IPS/IDS', price:140000, tier:80, desc:'Сигнатуры атак и эвристика на NGFW.', tierColor:'#34d399', type:'extra'},
+    {id:'ups', name:'ИБП APC Smart-UPS 3000', price:85000, tier:75, desc:'Автономия 18 минут для корректного шатдауна.', tierColor:'#34d399', type:'extra'},
+    {id:'none', name:'Не закупать', price:0, tier:0, desc:'Сэкономим бюджет, но risqué при отключении питания.', tierColor:'#475569', type:'extra'}
+  ]
+};
+
+var PACKETS = [
+  {t:'03:41:10', proto:'TCP', cls:'tcp', src:'192.168.10.15', dst:'10.100.0.1', info:'SYN → Core Switch', flag:'sync',
+   detail:'Флаги: SYN · Окно: 64240 · MSS: 1460<br><span class="k">Оценка:</span> штатное открытие сессии рабочей станцией. Ничего подозрительного.'},
+  {t:'03:41:12', proto:'TLSv1.3', cls:'tls', src:'185.220.101.5', dst:'212.45.10.2', info:'Client Hello с внешнего адреса', flag:'sync',
+   detail:'SNI: gateway.alfa-trust.ru · JA3: 51c4f1…<br><span class="k">Гео:</span> узел выхода Tor (DE) · <span class="k">ASN:</span> 205100<br><span class="warn">Внимание:</span> рукопожатие завершилось успешно для служебной учётной записи <b>service_admin</b> без MFA.'},
+  {t:'03:41:45', proto:'HTTP', cls:'http', src:'185.220.101.5', dst:'10.200.0.15', info:'POST /api/v1/query → UNION SELECT …', flag:'mal',
+   detail:'Метод: POST · URI: /api/v1/query · Тело: <b>UNION SELECT table_name FROM information_schema.tables</b><br><span class="bad">SQL-инъекция.</span> Параметр не экранирован, WAF в режиме мониторинга.'},
+  {t:'03:42:01', proto:'TCP', cls:'tcp', src:'10.200.0.15', dst:'185.220.101.5:8080', info:'Исходящее соединение из СУБД', flag:'mal',
+   detail:'Флаги: PSH,ACK · Длина: 412 байт<br><span class="bad">Reverse shell.</span> Процесс на сервере СУБД инициировал исходящий туннель на внешний хост.'},
+  {t:'03:42:02', proto:'DNS', cls:'dns', src:'10.50.0.100', dst:'8.8.8.8', info:'Запрос update.alfa-trust.ru', flag:'sync',
+   detail:'Тип: A · TTL: 300<br><span class="k">Оценка:</span> периодическая проверка обновлений SIEM. Штатно.'}
+];
+
+var HINTS = {
+  0:'Не ищите вирус в логах раньше времени. Сначала поймите модель угрозы: у банка есть периметр (NGFW), ядро сети и изолированный сегмент СУБД. Любая гипотеза должна объяснять, как трафик прошёл через периметр.',
+  1:'Считайте не цену, а риск. Дешёвый NGFW без IPS не остановит SQL-инъекцию, дешёвый коммутатор L2 не даст разнести VLAN. Оптимум по бюджету — средний класс + лицензия IPS. Оставьте резерв 150–200 тыс. ₽.',
+  2:'Минимально жизнеспособная схема: Интернет → NGFW → Core Switch → {Web Server, DB Server, SIEM, Рабочее место}. Всё, что стоит «до» фаервола, — уязвимо по определению.',
+  3:'Формат адреса: октеты 0–255, маска 0–32, VLAN 1–4094. Для сервисных сегментов берите /24 и разные VLAN: периметр 10.10.x, ядро 10.100.x, СУБД 10.200.x, мониторинг 10.50.x.',
+  4:'Ищите три признака: внешний адрес, обращение к внутреннему сегменту СУБД и исходящее соединение из СУБД наружу. Помечать вредоносными нужно пакеты с SQL-инъекцией и reverse shell. Затем в консоли: block 185.220.101.5',
+  5:'Совет директоров не читает логи. Пишите в терминах риска: «простой 0 минут», «утечки нет», «стоимость контура X», «остаточный риск — отсутствие MFA». И назовите срок устранения.'
+};
+
+var state = {
+  step:0, timeLeft:TOTAL_TIME, timerOn:false, timerId:null,
+  p1:'', p2:'', gr:'',
+  hyp:'', plan:'',
+  buy:{fw:'fw0', sw:'sw0', db:'db0', extra:'none'},
+  nodes:[], wires:[], seq:1, wireType:'copper',
+  ip:{}, cfgCanvas:{w:900,h:460},
+  pingOk:false, pingTried:false,
+  atkIp:'', fix:'', blocked:false, marked:{}, selectedPkt:null,
+  res:'', rec:'', hints:0, done:{}
+};
+
+/* ---------------- утилиты ---------------- */
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmt(n){ return Number(n).toLocaleString('ru-RU'); }
+function toast(msg, kind){
+  var t = $('toast');
+  $('toastTxt').textContent = msg;
+  $('toastIcon').textContent = kind === 'err' ? '✕' : (kind === 'ok' ? '✓' : '●');
+  t.className = 'toast show' + (kind ? ' ' + kind : '');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function(){ t.className = 'toast'; }, 2600);
+}
+
+/* ---------------- навигация ---------------- */
+function go(n){
+  state.step = n;
+  var btns = document.querySelectorAll('#nav button');
+  for(var i=0;i<btns.length;i++){ btns[i].classList.toggle('active', i === n); }
+  var phs = document.querySelectorAll('.phase');
+  for(var j=0;j<phs.length;j++){ phs[j].classList.toggle('active', j === n); }
+  window.scrollTo({top:0, behavior:'smooth'});
+  if(n === 2){ setTimeout(resizeCanvas, 60); }
+  if(n === 3){ buildIPTable(); }
+  if(n === 5){ updateSummary(); }
+  updateHUD(); updateProgress();
+}
+
+/* ---------------- таймер ---------------- */
+function toggleTimer(){
+  state.timerOn = !state.timerOn;
+  $('timerBtn').textContent = state.timerOn ? '⏸ Пауза' : '▶ Старт';
+  if(state.timerOn){
+    if(state.timerId) clearInterval(state.timerId);
+    state.timerId = setInterval(function(){
+      if(!state.timerOn) return;
+      state.timeLeft--;
+      if(state.timeLeft % 15 === 0) saveState();
+      if(state.timeLeft <= 0){
+        state.timeLeft = 0; state.timerOn = false;
+        clearInterval(state.timerId);
+        $('timerBtn').textContent = '▶ Старт';
+        toast('Дедлайн практикума истёк', 'err');
+      }
+      paintTime();
+    }, 1000);
+  }
+}
+function paintTime(){
+  var m = Math.floor(state.timeLeft / 60), s = state.timeLeft % 60;
+  var el = $('kpi_time');
+  el.querySelector('b').textContent = (m<10?'0':'') + m + ':' + (s<10?'0':'') + s;
+  el.className = 'kpi ' + (state.timeLeft < 600 ? 'bad' : (state.timeLeft < 1800 ? 'warn' : ''));
+}
+
+/* ---------------- закупка ---------------- */
+function renderCatalog(){
+  ['fw','sw','db','extra'].forEach(function(cat){
+    var host = $('cat_' + cat);
+    host.innerHTML = '';
+    CATALOG[cat].forEach(function(item){
+      var d = document.createElement('div');
+      d.className = 'pick' + (state.buy[cat] === item.id ? ' sel' : '');
+      d.style.setProperty('--tier', item.tierColor);
+      d.innerHTML =
+        '<b>' + esc(item.name) + '</b>' +
+        '<small>' + esc(item.desc) + '</small>' +
+        '<span class="price">' + (item.price ? fmt(item.price) + ' ₽' : '0 ₽') + '</span>' +
+        '<div class="tierbar"><i style="width:' + item.tier + '%"></i></div>';
+      d.onclick = function(){ state.buy[cat] = item.id; renderCatalog(); paintBudget(); saveState(); };
+      host.appendChild(d);
+    });
+  });
+}
+function findItem(cat){
+  var id = state.buy[cat];
+  for(var i=0;i<CATALOG[cat].length;i++){ if(CATALOG[cat][i].id === id) return CATALOG[cat][i]; }
+  return null;
+}
+function totalSpend(){
+  var s = 0;
+  ['fw','sw','db','extra'].forEach(function(c){
+    var it = findItem(c); if(it) s += it.price;
+  });
+  return s;
+}
+function paintBudget(){
+  var sp = totalSpend(), rem = BUDGET - sp;
+  var pct = Math.min(100, sp / BUDGET * 100);
+  var fill = $('bbFill'), wrap = $('bbWrap');
+  fill.style.width = pct + '%';
+  wrap.className = 'budgetbar' + (rem < 0 ? ' over' : '');
+  $('spendLabel').textContent = 'Закупка: ' + fmt(sp) + ' ₽ · остаток ' + fmt(rem) + ' ₽';
+  var tiers = ['fw','sw','db'].map(function(c){ var it = findItem(c); return it ? it.tier : 0; });
+  var minTier = Math.min.apply(null, tiers);
+  var risk = $('riskLabel');
+  if(rem < 0){ risk.textContent = '⚠ Бюджет превышен'; risk.style.color = '#f87171'; }
+  else if(minTier < 40){ risk.textContent = '⚠ Риск отказа узла при нагрузке'; risk.style.color = '#f87171'; }
+  else if(minTier < 70){ risk.textContent = '◐ Средний уровень защиты'; risk.style.color = '#fbbf24'; }
+  else { risk.textContent = '✓ Контур устойчив'; risk.style.color = '#34d399'; }
+  updateHUD();
+}
+
+/* ---------------- конструктор схемы ---------------- */
+function renderPalette(){
+  var host = $('palette');
+  host.innerHTML = '';
+  Object.keys(NODE_TYPES).forEach(function(k){
+    var t = NODE_TYPES[k];
+    var b = document.createElement('button');
+    b.className = 'tool';
+    b.draggable = true;
+    b.innerHTML = '<span>' + t.icon + '</span>+' + t.name;
+    b.onclick = function(){ addNode(k); };
+    b.ondragstart = function(e){ e.dataTransfer.setData('text/plain', k); };
+    host.appendChild(b);
+  });
+  var can = $('can');
+  can.ondragover = function(e){ e.preventDefault(); can.classList.add('dropping'); };
+  can.ondragleave = function(){ can.classList.remove('dropping'); };
+  can.ondrop = function(e){
+    e.preventDefault(); can.classList.remove('dropping');
+    var k = e.dataTransfer.getData('text/plain');
+    if(!NODE_TYPES[k]) return;
+    var r = can.getBoundingClientRect();
+    addNode(k, e.clientX - r.left - 60, e.clientY - r.top - 36);
+  };
+}
+
+function addNode(type, x, y){
+  if(state.nodes.length >= 16){ toast('Достигнут предел 16 узлов', 'err'); return; }
+  var n = {
+    id:'n' + (state.seq++),
+    type:type,
+    name:NODE_TYPES[type].name,
+    x: (typeof x === 'number') ? x : 40 + Math.random() * 420,
+    y: (typeof y === 'number') ? y : 50 + Math.random() * 280
+  };
+  var can = $('can');
+  n.x = Math.max(8, Math.min(can.clientWidth - 128, n.x));
+  n.y = Math.max(8, Math.min(can.clientHeight - 80, n.y));
+  state.nodes.push(n);
+  invalidatePing();
+  drawNodes();
+  toast('Узел «' + n.name + '» добавлен', 'ok');
+  updateHUD(); updateProgress(); saveState();
+}
+
+function removeNode(id){
+  state.nodes = state.nodes.filter(function(n){ return n.id !== id; });
+  state.wires = state.wires.filter(function(w){ return w.from !== id && w.to !== id; });
+  delete state.ip[id];
+  invalidatePing();
+  drawNodes();
+  updateHUD(); updateProgress(); saveState();
+}
+
+function clearSchema(){
+  if(!state.nodes.length){ toast('Схема уже пуста'); return; }
+  if(!confirm('Удалить все узлы и связи?')) return;
+  state.nodes = []; state.wires = []; state.ip = {};
+  invalidatePing();
+  drawNodes(); updateHUD(); updateProgress(); saveState();
+  toast('Схема очищена');
+}
+
+function restoreSample(){
+  state.nodes = [
+    {id:'n'+(state.seq++), type:'inet', name:'Интернет', x:30, y:180},
+    {id:'n'+(state.seq++), type:'fw',   name:'NGFW', x:210, y:180},
+    {id:'n'+(state.seq++), type:'sw',   name:'Core Switch', x:390, y:180},
+    {id:'n'+(state.seq++), type:'web',  name:'Web Server', x:600, y:70},
+    {id:'n'+(state.seq++), type:'db',   name:'DB Server', x:600, y:190},
+    {id:'n'+(state.seq++), type:'siem', name:'SIEM / SOC', x:600, y:310}
+  ];
+  var ids = state.nodes.map(function(n){ return n.id; });
+  invalidatePing();
+  state.wires = [
+    {from:ids[0], to:ids[1], type:'fiber'},
+    {from:ids[1], to:ids[2], type:'fiber'},
+    {from:ids[2], to:ids[3], type:'copper'},
+    {from:ids[2], to:ids[4], type:'copper'},
+    {from:ids[2], to:ids[5], type:'copper'}
+  ];
+  drawNodes();
+  toast('Пример топологии загружен — можно править под себя', 'ok');
+  updateHUD(); updateProgress(); saveState();
+}
+
+function nodeById(id){
+  for(var i=0;i<state.nodes.length;i++){ if(state.nodes[i].id === id) return state.nodes[i]; }
+  return null;
+}
+
+function invalidatePing(){
+  state.pingOk = false;
+  state.pingTried = false;
+  var result = $('pingResult');
+  if(result){ result.className = 'result'; result.textContent = ''; }
+  var hops = $('pingHops');
+  if(hops) hops.innerHTML = '';
+}
+
+function drawNodes(){
+  var can = $('can');
+  var old = can.querySelectorAll('.node');
+  for(var i=0;i<old.length;i++){ old[i].remove(); }
+
+  state.nodes.forEach(function(n){
+    var t = NODE_TYPES[n.type] || {icon:'▢', accent:'#94a3b8'};
+    // Keep saved/sample nodes inside the current responsive canvas.
+    n.x = Math.max(4, Math.min(Math.max(4, can.clientWidth - 124), Number(n.x) || 4));
+    n.y = Math.max(4, Math.min(Math.max(4, can.clientHeight - 76), Number(n.y) || 4));
+    var el = document.createElement('div');
+    el.className = 'node';
+    el.style.left = n.x + 'px';
+    el.style.top = n.y + 'px';
+    el.style.setProperty('--accent', t.accent);
+
+    var ipTxt = state.ip[n.id] && state.ip[n.id].ip ? state.ip[n.id].ip : n.type;
+    el.innerHTML =
+      '<i>' + t.icon + '</i>' +
+      '<b>' + esc(n.name) + '</b>' +
+      '<small>' + esc(String(ipTxt).split('/')[0]) + '</small>' +
+      '<button class="kill" title="Удалить">×</button>';
+
+    el.querySelector('.kill').onclick = function(e){ e.stopPropagation(); removeNode(n.id); };
+    el.oncontextmenu = function(e){ e.preventDefault(); e.stopPropagation(); openCtx(e.clientX, e.clientY, n.id); };
+
+    var offX = 0, offY = 0, dragging = false;
+    el.addEventListener('pointerdown', function(e){
+      if(e.target.classList.contains('kill')) return;
+      if(connectMode){ pickConnect(n); return; }
+      dragging = true;
+      var canvasRect = can.getBoundingClientRect();
+      offX = e.clientX - canvasRect.left - n.x;
+      offY = e.clientY - canvasRect.top - n.y;
+      el.classList.add('dragging');
+      try{ el.setPointerCapture(e.pointerId); }catch(err){}
+      var all = can.querySelectorAll('.node');
+      for(var k=0;k<all.length;k++){ all[k].classList.remove('sel'); }
+      el.classList.add('sel');
+      closeCtx();
+    });
+    el.addEventListener('pointermove', function(e){
+      if(!dragging) return;
+      var canvasRect = can.getBoundingClientRect();
+      var nx = e.clientX - canvasRect.left - offX;
+      var ny = e.clientY - canvasRect.top - offY;
+      nx = Math.max(4, Math.min(Math.max(4, can.clientWidth - 124), nx));
+      ny = Math.max(4, Math.min(Math.max(4, can.clientHeight - 76), ny));
+      n.x = nx; n.y = ny;
+      el.style.left = nx + 'px'; el.style.top = ny + 'px';
+      drawWires();
+    });
+    el.addEventListener('pointerup', function(e){
+      dragging = false;
+      el.classList.remove('dragging');
+      try{ el.releasePointerCapture(e.pointerId); }catch(err){}
+      saveState();
+    });
+    can.appendChild(el);
+  });
+
+  $('emptyHint').style.display = state.nodes.length ? 'none' : 'grid';
+  drawWires();
+  updateHUD(); updateProgress();
+}
+
+/* --- соединение узлов --- */
+var connectMode = false, connFrom = null, mousePt = {x:0,y:0};
+
+function toggleConnect(){
+  connectMode = !connectMode;
+  connFrom = null;
+  var b = $('connBtn');
+  b.textContent = connectMode ? '🔗 Провод: выберите узел' : '🔗 Провод';
+  b.style.background = connectMode ? 'rgba(34,211,238,.2)' : '';
+  b.style.borderColor = connectMode ? 'rgba(34,211,238,.6)' : '';
+  if(!connectMode){ hideTemp(); }
+  toast(connectMode ? 'Режим провода включён: клик по двум узлам' : 'Режим провода выключен');
+}
+
+function toggleWireType(){
+  state.wireType = state.wireType === 'copper' ? 'fiber' : 'copper';
+  $('wireTypeBtn').textContent = 'Кабель: ' + (state.wireType === 'copper' ? 'медь' : 'оптика');
+  saveState();
+}
+
+function pickConnect(n){
+  if(!connFrom){
+    connFrom = n.id;
+    $('connBtn').textContent = '🔗 → ' + n.name;
+    toast('Источник: ' + n.name + '. Теперь кликните по второму узлу');
+    return;
+  }
+  if(connFrom === n.id){ toast('Нужен другой узел', 'err'); return; }
+  var exists = state.wires.some(function(w){
+    return (w.from === connFrom && w.to === n.id) || (w.from === n.id && w.to === connFrom);
+  });
+  if(exists){ toast('Эта связь уже есть', 'err'); connFrom = null; $('connBtn').textContent = '🔗 Провод: выберите узел'; return; }
+  state.wires.push({from:connFrom, to:n.id, type:state.wireType});
+  invalidatePing();
+  connFrom = null;
+  toggleConnect();
+  drawWires();
+  toast('Магистраль проложена', 'ok');
+  updateHUD(); updateProgress(); saveState();
+}
+
+function anchors(a, b){
+  var ac = {x:a.x + 60, y:a.y + 36}, bc = {x:b.x + 60, y:b.y + 36};
+  var dx = bc.x - ac.x, dy = bc.y - ac.y;
+  if(Math.abs(dx) > Math.abs(dy)){
+    return {x1: ac.x + (dx > 0 ? 60 : -60), y1: ac.y, x2: bc.x + (dx > 0 ? -60 : 60), y2: bc.y};
+  }
+  return {x1: ac.x, y1: ac.y + (dy > 0 ? 36 : -36), x2: bc.x, y2: bc.y + (dy > 0 ? -36 : 36)};
+}
+
+function drawWires(){
+  var layer = $('wireLayer');
+  var html = '';
+  state.wires.forEach(function(w, i){
+    var a = nodeById(w.from), b = nodeById(w.to);
+    if(!a || !b) return;
+    var p = anchors(a, b);
+    var cls = 'wire' + (w.type === 'fiber' ? ' fiber' : '');
+    var path = 'M' + p.x1 + ',' + p.y1 + ' L' + p.x2 + ',' + p.y2;
+    html += '<path class="wire-glow" data-i="' + i + '" d="' + path + '"/>';
+    html += '<path class="' + cls + '" data-i="' + i + '" d="' + path + '"/>';
+  });
+  layer.innerHTML = html;
+}
+
+function resizeCanvas(){
+  var c = $('can');
+  state.cfgCanvas = {w:c.clientWidth, h:c.clientHeight};
+  state.nodes.forEach(function(n){
+    n.x = Math.max(4, Math.min(c.clientWidth - 124, n.x));
+    n.y = Math.max(4, Math.min(c.clientHeight - 76, n.y));
+  });
+  drawNodes();
+}
+
+/* линия при перетаскивании провода */
+$('can').addEventListener('pointermove', function(e){
+  if(!connectMode || !connFrom) return;
+  var r = $('can').getBoundingClientRect();
+  var a = nodeById(connFrom);
+  if(!a) return;
+  var line = $('tempLine');
+  line.style.display = '';
+  line.setAttribute('d', 'M' + (a.x + 60) + ',' + (a.y + 36) + ' L' + (e.clientX - r.left) + ',' + (e.clientY - r.top));
+});
+function hideTemp(){ var l = $('tempLine'); if(l) l.style.display = 'none'; }
+
+/* контекстное меню */
+function openCtx(x, y, id){
+  var m = $('ctx');
+  m.innerHTML = '';
+  var items = [
+    ['✏ Переименовать', function(){
+      var n = nodeById(id);
+      var v = prompt('Новое имя узла:', n.name);
+      if(v && v.trim()){ n.name = v.trim().slice(0, 24); drawNodes(); saveState(); }
+    }],
+    ['⚙ Настроить адрес', function(){ buildIPTable(); go(3); }],
+    ['🗑 Удалить узел', function(){ removeNode(id); }]
+  ];
+  items.forEach(function(it){
+    var b = document.createElement('button');
+    b.textContent = it[0];
+    b.onclick = function(){ closeCtx(); it[1](); };
+    m.appendChild(b);
+  });
+  m.style.left = Math.min(x, window.innerWidth - 190) + 'px';
+  m.style.top = Math.min(y, window.innerHeight - 140) + 'px';
+  m.classList.add('show');
+}
+function closeCtx(){ $('ctx').classList.remove('show'); }
+document.addEventListener('click', function(e){
+  if(!e.target.closest('#ctx')) closeCtx();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    if(connectMode) toggleConnect();
+    closeCtx();
+  }
+});
+
+/* ---------------- IP-план ---------------- */
+function buildIPTable(){
+  var host = $('ipTable');
+  if(!state.nodes.length){
+    host.innerHTML = '<div style="padding:20px;color:#7c8da5;font-size:13px">На схеме нет узлов. Вернитесь к конструктору и добавьте оборудование.</div>';
+    return;
+  }
+  var h = '<table><thead><tr><th style="width:190px">Узел</th><th style="width:110px">Интерфейс</th><th style="width:100px">VLAN</th><th style="width:190px">IP / маска</th><th>Политика ACL</th></tr></thead><tbody>';
+  state.nodes.forEach(function(n){
+    var rec = state.ip[n.id] || (state.ip[n.id] = {iface:'eth0', vlan:'', ip:'', acl:'Strict Drop'});
+    h += '<tr>' +
+      '<td><b style="color:#eaf2fb">' + (NODE_TYPES[n.type] ? NODE_TYPES[n.type].icon : '▢') + ' ' + esc(n.name) + '</b><div class="small" style="font-size:10.5px;font-family:var(--mono)">' + n.type + '</div></td>' +
+      '<td><input data-k="iface" data-id="' + n.id + '" value="' + esc(rec.iface) + '"></td>' +
+      '<td><input data-k="vlan" data-id="' + n.id + '" value="' + esc(rec.vlan) + '" placeholder="100"></td>' +
+      '<td><input data-k="ip" data-id="' + n.id + '" value="' + esc(rec.ip) + '" placeholder="10.100.0.1/24" style="font-family:var(--mono)"></td>' +
+      '<td><select data-k="acl" data-id="' + n.id + '">' +
+        ['Strict Drop','Allow Internal','Public Exposed','Monitoring Only'].map(function(o){
+          return '<option' + (rec.acl === o ? ' selected' : '') + '>' + o + '</option>';
+        }).join('') +
+      '</select></td></tr>';
+  });
+  h += '</tbody></table>';
+  host.innerHTML = h;
+
+  var inputs = host.querySelectorAll('input, select');
+  for(var i=0;i<inputs.length;i++){
+    inputs[i].onchange = function(e){
+      var id = e.target.getAttribute('data-id');
+      var k = e.target.getAttribute('data-k');
+      if(!state.ip[id]) state.ip[id] = {};
+      state.ip[id][k] = e.target.value.trim();
+      invalidatePing();
+      drawNodes(); updateProgress(); updateHUD(); saveState();
+    };
+  }
+}
+
+function validIP(s){
+  var m = String(s).match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/);
+  if(!m) return false;
+  for(var i=1;i<=4;i++){ var v = parseInt(m[i],10); if(v < 0 || v > 255) return false; }
+  var mask = parseInt(m[5],10);
+  return mask >= 0 && mask <= 32;
+}
+
+function autoFillIPs(){
+  if(!state.nodes.length){ toast('Сначала соберите схему', 'err'); return; }
+  var plan = {inet:'10.10.0.1/24', fw:'10.10.0.2/24', sw:'10.100.0.1/24', web:'10.20.0.10/24', db:'10.200.0.15/24', siem:'10.50.0.100/24', pc:'10.100.0.50/24', ups:'10.50.1.5/24'};
+  var vlan = {inet:10, fw:10, sw:100, web:20, db:200, siem:50, pc:100, ups:50};
+  invalidatePing();
+  state.nodes.forEach(function(n){
+    if(!state.ip[n.id]) state.ip[n.id] = {};
+    var r = state.ip[n.id];
+    if(!r.ip) r.ip = plan[n.type] || '10.100.0.9/24';
+    if(!r.vlan) r.vlan = String(vlan[n.type] || 100);
+    if(!r.iface) r.iface = 'eth0';
+    if(!r.acl || r.acl === 'Strict Drop') r.acl = (n.type === 'db' || n.type === 'siem') ? 'Monitoring Only' : 'Strict Drop';
+  });
+  buildIPTable();
+  toast('Шаблон применён — проверьте адреса', 'ok');
+  updateProgress(); saveState();
+}
+
+/* --- путь по графу --- */
+function findPath(fromId, toId){
+  var adj = {};
+  state.nodes.forEach(function(n){ adj[n.id] = []; });
+  state.wires.forEach(function(w){
+    if(adj[w.from] && adj[w.to]){ adj[w.from].push(w.to); adj[w.to].push(w.from); }
+  });
+  var queue = [[fromId]], seen = {};
+  seen[fromId] = true;
+  while(queue.length){
+    var path = queue.shift();
+    var last = path[path.length - 1];
+    if(last === toId) return path;
+    var nb = adj[last] || [];
+    for(var i=0;i<nb.length;i++){
+      if(!seen[nb[i]]){ seen[nb[i]] = true; queue.push(path.concat([nb[i]])); }
+    }
+  }
+  return null;
+}
+
+function setResult(kind, text){
+  var r = $('pingResult');
+  r.className = 'result show ' + kind;
+  r.textContent = (kind === 'ok' ? '✓ ' : kind === 'err' ? '✕ ' : '◐ ') + text;
+  updateHUD();
+  updateProgress();
+}
+
+function showHops(list){
+  var h = $('pingHops');
+  h.innerHTML = '';
+  list.forEach(function(item){
+    var d = document.createElement('span');
+    d.className = 'hop ' + (item.ok ? 'ok' : 'bad');
+    d.textContent = item.txt;
+    h.appendChild(d);
+  });
+}
+
+function runPing(){
+  state.pingTried = true;
+  state.pingOk = false;
+  if(!state.nodes.length){ setResult('err', 'Нет ни одного узла — собрать схему.'); updateHUD(); return; }
+  var inet = state.nodes.filter(function(n){ return n.type === 'inet'; })[0];
+  var db = state.nodes.filter(function(n){ return n.type === 'db'; })[0];
+  var hasFw = state.nodes.some(function(n){ return n.type === 'fw'; });
+  var hasSw = state.nodes.some(function(n){ return n.type === 'sw'; });
+
+  var issues = [];
+  if(!inet) issues.push('нет узла «Интернет»');
+  if(!db) issues.push('нет узла «DB Server»');
+  if(!hasFw) issues.push('нет NGFW на периметре');
+  if(!hasSw) issues.push('нет ядра коммутации');
+  if(issues.length){
+    setResult('err', 'Архитектура неполная: ' + issues.join(', ') + '.');
+    showHops([{txt:'✕ предпроверка', ok:false}]);
+    return;
+  }
+
+  var path = findPath(inet.id, db.id);
+  if(!path){
+    setResult('err', 'Пакет не дошёл: между «Интернет» и «DB Server» нет связного маршрута. Проверьте провода.');
+    showHops([{txt:'✕ разрыв маршрута', ok:false}]);
+    return;
+  }
+
+  var pathTypes = path.map(function(id){ var node = nodeById(id); return node ? node.type : ''; });
+  if(pathTypes.indexOf('fw') === -1 || pathTypes.indexOf('sw') === -1){
+    setResult('err', 'Маршрут обходит NGFW или Core Switch. Проведите путь Интернет → Firewall → Core Switch → DB Server.');
+    showHops(path.map(function(id){ var node = nodeById(id); return {txt:'→ ' + (node ? node.name : id), ok:false}; }));
+    updateHUD(); updateProgress();
+    return;
+  }
+
+  var dbPolicy = (state.ip[db.id] || {}).acl || '';
+  if(dbPolicy === 'Public Exposed' || dbPolicy === 'Strict Drop'){
+    setResult('err', dbPolicy === 'Public Exposed'
+      ? 'Критическая ошибка: DB Server отмечен как Public Exposed. Уберите прямую публикацию СУБД и разрешите доступ только из внутреннего сегмента.'
+      : 'ACL на DB Server блокирует тестовый трафик. Выберите Allow Internal или Monitoring Only и повторите Ping.');
+    showHops(path.map(function(id){ var node = nodeById(id); return {txt:'→ ' + (node ? node.name : id), ok:false}; }));
+    updateHUD(); updateProgress();
+    return;
+  }
+
+  var badIP = [], badVlan = [];
+  state.nodes.forEach(function(n){
+    var r = state.ip[n.id] || {};
+    if(!validIP(r.ip)) badIP.push(n.name);
+    if(!/^\d+$/.test(String(r.vlan || ''))) { badVlan.push(n.name); return; }
+    var v = parseInt(r.vlan, 10);
+    if(isNaN(v) || v < 1 || v > 4094) badVlan.push(n.name);
+  });
+  if(badIP.length){
+    setResult('err', 'ICMP Destination Host Unreachable. Некорректный IP/маска у: ' + badIP.join(', ') + '. Формат: 10.100.0.1/24');
+    showHops(path.map(function(id, i){
+      var n = nodeById(id);
+      return {txt: (i === 0 ? '🖥 ' : '→ ') + (n ? n.name : id), ok: false};
+    }));
+    return;
+  }
+  if(badVlan.length){
+    setResult('warn', 'Пакет прошёл, но VLAN вне диапазона 1–4094 у: ' + badVlan.join(', ') + '. Коммутатор сбросит кадры.');
+    return;
+  }
+
+  setResult('ok', 'Reply from 10.200.0.15: time=' + (2 + Math.floor(Math.random() * 6)) + 'ms TTL=62 · потерь 0%. Связность подтверждена.');
+  showHops(path.map(function(id, i){
+    var n = nodeById(id);
+    return {txt: (i === 0 ? '🖥 ' : '→ ') + (n ? n.name : id), ok: true};
+  }));
+
+  state.pingOk = true;
+  toast('Связность подтверждена (+120 к рейтингу)', 'ok');
+  animatePacket(path);
+  updateHUD(); updateProgress(); saveState();
+}
+
+function animatePacket(path){
+  var can = $('can');
+  var dots = [];
+  var step = 0;
+
+  function moveTo(a, b, done){
+    var d = document.createElement('div');
+    d.className = 'packet';
+    d.style.left = (a.x + 55) + 'px';
+    d.style.top = (a.y + 31) + 'px';
+    can.appendChild(d);
+    dots.push(d);
+    requestAnimationFrame(function(){
+      d.style.left = (b.x + 55) + 'px';
+      d.style.top = (b.y + 31) + 'px';
+    });
+    setTimeout(done, 520);
+  }
+
+  function next(){
+    if(step >= path.length - 1){
+      setTimeout(function(){
+        dots.forEach(function(d){ d.remove(); });
+        toast('Пакет дошёл до СУБД', 'ok');
+      }, 600);
+      return;
+    }
+    var a = nodeById(path[step]), b = nodeById(path[step + 1]);
+    step++;
+    if(a && b) moveTo(a, b, next); else next();
+  }
+  next();
+}
+
+/* ---------------- дамп трафика ---------------- */
+function renderDump(){
+  var q = ($('dumpFilter').value || '').toLowerCase().trim();
+  var body = $('dumpBody');
+  body.innerHTML = '';
+  var shown = 0;
+
+  PACKETS.forEach(function(p, idx){
+    var hay = (p.t + ' ' + p.proto + ' ' + p.src + ' ' + p.dst + ' ' + p.info).toLowerCase();
+    if(q && hay.indexOf(q) === -1) return;
+    shown++;
+    var tr = document.createElement('tr');
+    tr.className = (state.selectedPkt === idx ? 'sel ' : '') + (state.marked[idx] ? 'mal' : '');
+    tr.innerHTML =
+      '<td class="mono">' + p.t + '</td>' +
+      '<td><span class="proto ' + p.cls + '">' + p.proto + '</span></td>' +
+      '<td class="mono">' + p.src + '</td>' +
+      '<td class="mono">' + p.dst + '</td>' +
+      '<td>' + esc(p.info) + (state.marked[idx] ? ' <span style="color:#fca5a5">⚑</span>' : '') + '</td>';
+    tr.onclick = function(){ selectPacket(idx); };
+    body.appendChild(tr);
+  });
+
+  $('dumpCount').textContent = 'показано ' + shown + ' из ' + PACKETS.length;
+}
+
+function selectPacket(idx){
+  state.selectedPkt = idx;
+  renderDump();
+  var p = PACKETS[idx];
+  var d = $('pktDetail');
+  d.className = 'packet-detail show';
+  d.innerHTML =
+    '<h4>Пакет #' + (idx + 1) + ' · ' + p.proto + ' · ' + p.src + ' → ' + p.dst + '</h4>' +
+    '<div><span class="k">Время:</span> <span class="v">' + p.t + '</span></div>' +
+    '<div><span class="k">Длина кадра:</span> <span class="v">' + (60 + idx * 137) + ' байт</span></div>' +
+    '<div style="margin-top:8px">' + p.detail + '</div>' +
+    '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn ' + (state.marked[idx] ? 'danger' : '') + '" id="markBtn">' + (state.marked[idx] ? '⚑ Снять отметку' : '⚑ Пометить вредоносным') + '</button>' +
+      '<button class="btn ghost" id="copyBtn">⧉ Скопировать SRC</button>' +
+    '</div>';
+  $('markBtn').onclick = function(){ toggleMark(idx); };
+  $('copyBtn').onclick = function(){
+    if(navigator.clipboard){ navigator.clipboard.writeText(p.src); toast('Адрес скопирован'); }
+    else { toast(p.src); }
+  };
+}
+
+function toggleMark(idx){
+  state.marked[idx] = !state.marked[idx];
+  renderDump();
+  selectPacket(idx);
+  if(state.marked[2] && state.marked[3]){ toast('Оба вредоносных пакета найдены (+60)', 'ok'); }
+  updateHUD(); updateProgress(); saveState();
+}
+
+/* ---------------- терминал ---------------- */
+function termLine(text, cls){
+  var t = $('term');
+  var d = document.createElement('div');
+  if(cls) d.className = cls;
+  d.innerHTML = text;
+  t.appendChild(d);
+  t.scrollTop = t.scrollHeight;
+}
+
+function bootTerm(){
+  $('term').innerHTML = '';
+  termLine('<span class="dim">SOC-OnCall shell v4.2 · сессия #A17 · 03:44:10</span>');
+  termLine('<span class="dim">Введите help для списка команд.</span>');
+}
+
+function runCmd(){
+  var inp = $('termIn');
+  var raw = (inp.value || '').trim();
+  if(!raw) return;
+  inp.value = '';
+  termLine('<span class="cmd">admin@soc:~$ ' + esc(raw) + '</span>');
+
+  var parts = raw.split(/\s+/);
+  var cmd = parts[0].toLowerCase();
+
+  if(cmd === 'help'){
+    termLine('Доступно: <b>nmap</b> &lt;ip&gt; · <b>netstat</b> · <b>whois</b> &lt;ip&gt; · <b>block</b> &lt;ip&gt; · <b>isolate</b> &lt;node&gt; · <b>clear</b>');
+  } else if(cmd === 'clear'){
+    $('term').innerHTML = '';
+  } else if(cmd === 'nmap'){
+    var target = parts[1] || '10.200.0.15';
+    termLine('Starting Nmap 7.94 ( https://nmap.org )');
+    termLine('Nmap scan report for ' + esc(target));
+    termLine('PORT     STATE SERVICE    VERSION');
+    termLine('443/tcp  open  https      nginx 1.24');
+    termLine('5432/tcp open  postgresql PostgreSQL 15.4');
+    termLine('8080/tcp open  http-proxy <span class="err">[!] подозрительный обработчик</span>');
+    termLine('<span class="dim">Nmap done: 1 IP address (1 host up) scanned in 2.11s</span>');
+  } else if(cmd === 'netstat'){
+    termLine('Proto  Local Address        Foreign Address        State');
+    termLine('tcp    10.200.0.15:5432     10.100.0.50:51822      ESTABLISHED');
+    termLine('tcp    10.200.0.15:41266    <span class="err">185.220.101.5:8080</span>     ESTABLISHED');
+    termLine('<span class="dim">— одно исходящее соединение из сегмента СУБД наружу</span>');
+  } else if(cmd === 'whois'){
+    var ip = parts[1] || '';
+    if(!ip){ termLine('<span class="err">whois: укажите IP</span>'); }
+    else {
+      termLine('inetnum: ' + esc(ip) + '/24');
+      termLine('netname: TOR-EXIT-NET');
+      termLine('country: DE');
+      termLine('abuse-mailbox: abuse@example-tor.net');
+      termLine('<span class="dim">— адрес относится к сети узлов выхода Tor</span>');
+    }
+  } else if(cmd === 'block'){
+    var ip2 = parts[1] || '';
+    if(!ip2){ termLine('<span class="err">block: укажите IP</span>'); }
+    else {
+      state.blocked = true;
+      state.atkIp = ip2;
+      if($('f_atk')) $('f_atk').value = ip2;
+      termLine('<span class="ok">[+] Правило добавлено: deny ip host ' + esc(ip2) + ' any (precedence 1)</span>');
+      termLine('<span class="ok">[+] Сессии service_admin отозваны, MFA принудительно включена</span>');
+      termLine('<span class="dim">— правило активно на NGFW, соединение сброшено</span>');
+      toast('Источник заблокирован на периметре (+80)', 'ok');
+      updateHUD(); updateProgress(); saveState();
+    }
+  } else if(cmd === 'isolate'){
+    var target2 = (parts[1] || '').toLowerCase();
+    var found = state.nodes.filter(function(n){
+      return n.name.toLowerCase().indexOf(target2) !== -1 && target2 !== '';
+    })[0];
+    if(!target2){ termLine('<span class="err">isolate: укажите узел, например: isolate db</span>'); }
+    else if(found){ termLine('<span class="ok">[+] Узел «' + esc(found.name) + '» переведён в карантинный VLAN 999</span>'); }
+    else { termLine('<span class="err">isolate: узел не найден на схеме</span>'); }
+  } else {
+    termLine('<span class="err">' + esc(cmd) + ': команда не найдена. Введите help.</span>');
+  }
+  $('term').scrollTop = $('term').scrollHeight;
+}
+
+/* ---------------- рейтинг / прогресс ---------------- */
+function scoreValue(){
+  var s = 1000 - state.hints * 40;
+  var sp = totalSpend();
+  if(sp > BUDGET) s -= 150;
+  if(sp === 0) s -= 60;
+  if(state.pingOk) s += 120;
+  if((state.atkIp || '').indexOf('185.220.101.5') !== -1) s += 100;
+  if(state.blocked) s += 80;
+  if(state.marked[2] && state.marked[3]) s += 60;
+  if(state.res && state.rec && state.fix) s += 100;
+  if(state.nodes.length >= 4 && state.wires.length >= 3) s += 40;
+  return Math.max(0, Math.round(s));
+}
+
+function progressValue(){
+  var checks = [
+    !!(state.hyp && state.hyp.length > 10),
+    totalSpend() > 0,
+    state.nodes.length >= 4 && state.wires.length >= 3,
+    state.pingOk,
+    (state.atkIp || '').indexOf('185.220.101.5') !== -1 && state.blocked,
+    !!(state.res && state.rec)
+  ];
+  var done = checks.filter(Boolean).length;
+  for(var i=0;i<checks.length;i++){
+    var b = document.querySelector('#nav button[data-i="' + i + '"]');
+    if(b) b.classList.toggle('done', checks[i]);
+  }
+  return Math.round(done / checks.length * 100);
+}
+
+function updateHUD(){
+  $('kpi_score').querySelector('b').textContent = scoreValue();
+  var rem = BUDGET - totalSpend();
+  var kb = $('kpi_budget');
+  kb.querySelector('b').textContent = fmt(Math.max(0, rem));
+  kb.className = 'kpi ' + (rem < 0 ? 'bad' : (rem < 150000 ? 'warn' : 'good'));
+  $('kpi_nodes').querySelector('b').textContent = state.nodes.length + ' / ' + state.wires.length;
+  $('kpi_step').querySelector('b').textContent = (state.step + 1) + ' / 6';
+  paintTime();
+}
+
+function updateProgress(){
+  var p = progressValue();
+  $('progBar').style.width = p + '%';
+  $('progPct').textContent = p + '%';
+}
+
+function badgesList(){
+  var b = [];
+  b.push({t:'🏗 Архитектор сети', on: state.nodes.length >= 5 && state.wires.length >= 4});
+  b.push({t:'💰 Экономист', on: totalSpend() > 0 && totalSpend() <= 900000});
+  b.push({t:'🛡 Устойчивый контур', on: (function(){
+    var t = ['fw','sw','db'].map(function(c){ var it = findItem(c); return it ? it.tier : 0; });
+    return Math.min.apply(null, t) >= 70;
+  })()});
+  b.push({t:'🔌 Связность', on: state.pingOk});
+  b.push({t:'🕵 Охотник за угрозами', on: (state.atkIp || '').indexOf('185.220.101.5') !== -1});
+  b.push({t:'🚫 Периметр закрыт', on: state.blocked});
+  b.push({t:'🎯 Без подсказок', on: state.hints === 0 && progressValue() >= 60});
+  b.push({t:'📊 Отчёт готов', on: !!(state.res && state.rec)});
+  return b;
+}
+
+function updateSummary(){
+  $('sumSpend').textContent = fmt(totalSpend()) + ' ₽';
+  $('sumPing').textContent = state.pingOk ? 'OK' : (state.pingTried ? 'ошибка' : 'не проверена');
+  $('sumPing').style.color = state.pingOk ? '#34d399' : '#fbbf24';
+  $('sumAtk').textContent = state.atkIp || '—';
+  $('sumScore').textContent = scoreValue();
+  var host = $('badges');
+  host.innerHTML = '';
+  badgesList().forEach(function(x){
+    var d = document.createElement('span');
+    d.className = 'badge' + (x.on ? ' on' : '');
+    d.textContent = x.t;
+    host.appendChild(d);
+  });
+}
+
+/* ---------------- подсказки ---------------- */
+function showHint(i){
+  var box = $('hint' + i);
+  if(!box) return;
+  state.hints++;
+  box.innerHTML = '<b>Наставник:</b> ' + HINTS[i] + '<div style="margin-top:6px;color:#8b7bd8;font-size:11.5px">−40 к рейтингу</div>';
+  box.classList.add('show');
+  updateHUD(); updateProgress(); saveState();
+}
+
+/* ---------------- отчёт ---------------- */
+function topologySVG(){
+  var W = state.cfgCanvas.w || 900, H = state.cfgCanvas.h || 460;
+  if(!state.nodes.length){
+    return '<div style="padding:24px;border:1px dashed #ccc;border-radius:10px;color:#888">Топология не собрана</div>';
+  }
+  var s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="background:#0b1220;border-radius:12px;border:1px solid #223">';
+  state.wires.forEach(function(w){
+    var a = nodeById(w.from), b = nodeById(w.to);
+    if(!a || !b) return;
+    var p = anchors(a, b);
+    s += '<line x1="' + p.x1 + '" y1="' + p.y1 + '" x2="' + p.x2 + '" y2="' + p.y2 + '" stroke="' + (w.type === 'fiber' ? '#34d399' : '#3b82f6') + '" stroke-width="2.5" stroke-linecap="round"/>';
+  });
+  state.nodes.forEach(function(n){
+    var t = NODE_TYPES[n.type] || {accent:'#94a3b8'};
+    var rec = state.ip[n.id] || {};
+    s += '<rect x="' + (n.x + 2) + '" y="' + (n.y + 2) + '" width="116" height="68" rx="10" fill="#111e30" stroke="#2a3a52"/>';
+    s += '<rect x="' + (n.x + 2) + '" y="' + (n.y + 2) + '" width="4" height="68" rx="2" fill="' + t.accent + '"/>';
+    s += '<text x="' + (n.x + 60) + '" y="' + (n.y + 32) + '" fill="#eaf2fb" font-size="11.5" font-family="system-ui" text-anchor="middle" font-weight="700">' + esc(n.name).slice(0, 16) + '</text>';
+    s += '<text x="' + (n.x + 60) + '" y="' + (n.y + 50) + '" fill="#7c8da5" font-size="9.5" font-family="monospace" text-anchor="middle">' + esc(String(rec.ip || n.type).split('/')[0]) + '</text>';
+  });
+  s += '</svg>';
+  return s;
+}
+
+function buildReportHTML(){
+  var dt = new Date();
+  var iplist = state.nodes.map(function(n){
+    var r = state.ip[n.id] || {};
+    return '<tr><td>' + esc(n.name) + '</td><td>' + esc(n.type) + '</td><td>' + esc(r.iface || '') + '</td><td>' + esc(r.vlan || '') + '</td><td>' + esc(r.ip || '') + '</td><td>' + esc(r.acl || '') + '</td></tr>';
+  }).join('');
+
+  var markList = PACKETS.filter(function(p, i){ return state.marked[i]; })
+    .map(function(p){ return '<li>' + p.t + ' · ' + p.proto + ' · ' + p.src + ' → ' + p.dst + ' — ' + p.info + '</li>'; }).join('');
+
+  var spend = totalSpend();
+  var bought = ['fw','sw','db','extra'].map(function(c){
+    var it = findItem(c);
+    return it ? '<li>' + it.name + ' — ' + (it.price ? fmt(it.price) + ' ₽' : 'без закупки') + '</li>' : '';
+  }).join('');
+
+  return '<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Отчёт · ЦОД Альфа-Траст</title>' +
+  '<style>body{font-family:system-ui,Arial,sans-serif;max-width:860px;margin:36px auto;padding:0 22px;color:#16202f;line-height:1.55}' +
+  'h1{font-size:26px;margin:0 0 6px;color:#0b2a53}h2{font-size:16px;margin:26px 0 8px;color:#0b2a53;border-bottom:2px solid #e2e8f0;padding-bottom:6px}' +
+  'table{border-collapse:collapse;width:100%;font-size:12.5px;margin:10px 0}th,td{border:1px solid #d8e0ea;padding:7px 9px;text-align:left}th{background:#f1f5f9}' +
+  '.meta{color:#5b6b82;font-size:13px}ul{padding-left:20px;font-size:13px}.box{background:#f6f9fc;border-left:3px solid #0ea5b7;padding:12px 16px;border-radius:6px;font-size:13.5px}' +
+  '.kpi{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}.kpi div{flex:1;min-width:130px;border:1px solid #d8e0ea;border-radius:9px;padding:10px 12px}' +
+  '.kpi b{display:block;font-size:18px;color:#0b2a53}.kpi span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#5b6b82}' +
+  'footer{margin-top:36px;font-size:11.5px;color:#8494a8;border-top:1px solid #e2e8f0;padding-top:12px}</style></head><body>' +
+
+  '<h1>Отчёт команды ИБ · ЦОД банка «Альфа-Траст»</h1>' +
+  '<div class="meta">Дата: ' + dt.toLocaleString('ru-RU') + ' · Группа: ' + esc(state.gr || '—') + '</div>' +
+  '<div class="meta">Архитектор: <b>' + esc(state.p1 || '—') + '</b> · Аудитор ИБ: <b>' + esc(state.p2 || '—') + '</b></div>' +
+
+  '<div class="kpi">' +
+    '<div><span>Закупка</span><b>' + fmt(spend) + ' ₽</b></div>' +
+    '<div><span>Узлов / связей</span><b>' + state.nodes.length + ' / ' + state.wires.length + '</b></div>' +
+    '<div><span>Связность</span><b>' + (state.pingOk ? 'OK' : '—') + '</b></div>' +
+    '<div><span>Рейтинг</span><b>' + scoreValue() + '</b></div>' +
+  '</div>' +
+
+  '<h2>1. Гипотеза и план</h2>' +
+  '<div class="box"><b>Гипотеза:</b> ' + esc(state.hyp || 'не зафиксирована') + '</div>' +
+  '<div class="box" style="margin-top:8px"><b>План:</b> ' + esc(state.plan || '—').replace(/\n/g, '<br>') + '</div>' +
+
+  '<h2>2. Закупленное оборудование</h2><ul>' + bought + '</ul>' +
+  '<div class="meta">Итого: ' + fmt(spend) + ' ₽ из ' + fmt(BUDGET) + ' ₽ · остаток ' + fmt(BUDGET - spend) + ' ₽</div>' +
+
+  '<h2>3. Спроектированная топология</h2>' + topologySVG() +
+  '<h2>4. IP-план и политики</h2>' +
+  '<table><tr><th>Узел</th><th>Тип</th><th>Интерфейс</th><th>VLAN</th><th>IP / маска</th><th>ACL</th></tr>' + (iplist || '<tr><td colspan="6">нет данных</td></tr>') + '</table>' +
+
+  '<h2>5. Разбор трафика</h2>' +
+  '<div class="box"><b>Источник атаки:</b> ' + esc(state.atkIp || 'не определён') + '<br><b>Блокировка на периметре:</b> ' + (state.blocked ? 'выполнена' : 'не выполнена') + '</div>' +
+  '<ul>' + (markList || '<li>вредоносные пакеты не отмечены</li>') + '</ul>' +
+  '<div class="box" style="margin-top:8px"><b>Локализация:</b> ' + esc(state.fix || '—').replace(/\n/g, '<br>') + '</div>' +
+
+  '<h2>6. Резюме для Совета директоров</h2>' +
+  '<div class="box">' + esc(state.res || '—').replace(/\n/g, '<br>') + '</div>' +
+  '<h2>7. Рекомендации</h2>' +
+  '<div class="box">' + esc(state.rec || '—').replace(/\n/g, '<br>') + '</div>' +
+
+  '<h2>Достижения</h2><div>' + badgesList().map(function(b){
+    return '<span style="display:inline-block;margin:3px 5px 3px 0;padding:5px 11px;border-radius:99px;font-size:12px;border:1px solid ' + (b.on ? '#c8a34a;background:#fdf6e3;color:#8a6d1f' : '#d8e0ea;background:#f8fafc;color:#98a6b8') + '">' + b.t + '</span>';
+  }).join('') + '</div>' +
+
+  '<footer>Сформировано автоматически на киберполигоне «Альфа-Траст». Документ содержит учебные данные.</footer>' +
+  '</body></html>';
+}
+
+function genReport(){
+  var blob = new Blob([buildReportHTML()], {type:'text/html;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'alfatrust_incident_report.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+  toast('Отчёт выгружен', 'ok');
+}
+
+function previewReport(){
+  var w = window.open('', '_blank');
+  if(!w){ toast('Разрешите всплывающие окна', 'err'); return; }
+  w.document.write(buildReportHTML());
+  w.document.close();
+}
+
+function exportSVG(){
+  if(!state.nodes.length){ toast('Схема пуста', 'err'); return; }
+  var blob = new Blob([topologySVG()], {type:'image/svg+xml;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'topology.svg';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+  toast('Схема экспортирована', 'ok');
+}
+
+/* ---------------- сохранение ---------------- */
+var SAVE_KEY = 'alfa_cyber_quest_v2';
+function saveState(silent){
+  try{
+    state.cfgCanvas = state.cfgCanvas || {w:900,h:460};
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    if(silent) toast('Прогресс сохранён', 'ok');
+  }catch(e){ if(silent) toast('Сохранение недоступно в этом окружении', 'err'); }
+}
+function loadState(){
+  try{
+    var raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return false;
+    var s = JSON.parse(raw);
+    if(!s || !Array.isArray(s.nodes) || !Array.isArray(s.wires)) return false;
+    if(!s.buy || typeof s.buy !== 'object') s.buy = {fw:'fw0', sw:'sw0', db:'db0', extra:'none'};
+    if(!s.ip || typeof s.ip !== 'object') s.ip = {};
+    s.nodes = s.nodes.filter(function(n){
+      return n && typeof n.id === 'string' && NODE_TYPES[n.type] &&
+        Number.isFinite(Number(n.x)) && Number.isFinite(Number(n.y));
+    }).slice(0,16);
+    var validIds = {};
+    s.nodes.forEach(function(n){ validIds[n.id] = true; });
+    s.wires = s.wires.filter(function(w){ return w && validIds[w.from] && validIds[w.to] && w.from !== w.to; });
+    if(!Number.isFinite(Number(s.timeLeft))) s.timeLeft = TOTAL_TIME;
+    s.timeLeft = Math.max(0, Math.min(TOTAL_TIME, Number(s.timeLeft)));
+    if(!Number.isFinite(Number(s.seq)) || Number(s.seq) < 1) s.seq = s.nodes.length + 1;
+    if(!s.marked || typeof s.marked !== 'object') s.marked = {};
+    Object.keys(s).forEach(function(k){ state[k] = s[k]; });
+    state.timerId = null; state.timerOn = false;
+    return true;
+  }catch(e){ return false; }
+}
+function hardReset(){
+  if(!confirm('Сбросить весь прогресс и начать заново?')) return;
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  location.reload();
+}
+
+/* ---------------- привязка полей ---------------- */
+function bindFields(){
+  var map = {p1:'p1', p2:'p2', gr:'gr', f_hyp:'hyp', f_plan:'plan', f_atk:'atkIp', f_fix:'fix', f_res:'res', f_rec:'rec'};
+  Object.keys(map).forEach(function(id){
+    var el = $(id);
+    if(!el) return;
+    if(state[map[id]]) el.value = state[map[id]];
+    el.addEventListener('input', function(){
+      state[map[id]] = el.value;
+      updateHUD(); updateProgress();
+      clearTimeout(bindFields._t);
+      bindFields._t = setTimeout(function(){ saveState(); }, 700);
+    });
+  });
+  var ti = $('termIn');
+  if(ti){ ti.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); runCmd(); } }); }
+}
+
+/* ---------------- старт ---------------- */
+var booted = false;
+function boot(){
+  if(booted) return;
+  booted = true;
+  var restored = loadState();
+
+  state.step = 0;
+  state.timerOn = false;
+  if(state.timerId){ clearInterval(state.timerId); state.timerId = null; }
+  state.timerId = null;
+  $('timerBtn').textContent = '▶ Старт';
+
+  renderCatalog();
+  paintBudget();
+  renderPalette();
+  bindFields();
+  renderDump();
+  bootTerm();
+
+  if(!state.nodes) state.nodes = [];
+  if(!state.wires) state.wires = [];
+  if(!state.ip) state.ip = {};
+  drawNodes();
+
+  var can = $('can');
+  state.cfgCanvas = {w:can.clientWidth || 900, h:can.clientHeight || 460};
+
+  paintTime();
+  updateHUD();
+  updateProgress();
+  updateSummary();
+
+  window.addEventListener('resize', function(){
+    clearTimeout(boot._r);
+    boot._r = setTimeout(resizeCanvas, 200);
+  });
+
+  toast(restored ? 'Сессия восстановлена из сохранения' : 'Полигон запущен. Удачи в расследовании!', 'ok');
+}
+
+document.addEventListener('DOMContentLoaded', boot);
+if(document.readyState !== 'loading') boot();
+</script>
+</body>
+</html>
